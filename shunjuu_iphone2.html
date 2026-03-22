@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>春秋スクラップ</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: 'Hiragino Mincho ProN', 'Yu Mincho', Georgia, serif; background: #f7f2e8; color: #2c2416; min-height: 100vh; }
+
+header { background: #1a1208; color: #f0e6cc; padding: 0.9rem 1.2rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+header h1 { font-size: 1.15rem; letter-spacing: 0.25em; }
+header small { font-size: 0.72rem; opacity: 0.55; }
+
+.tabs { display: flex; background: #2c2416; }
+.tab { flex: 1; padding: 0.75rem 0; text-align: center; color: #a09070; cursor: pointer; font-size: 0.88rem; border-bottom: 2px solid transparent; transition: all 0.2s; }
+.tab.active { color: #f0e6cc; border-bottom-color: #c8a96e; }
+
+.view { display: none; }
+.view.active { display: block; }
+
+/* 一覧 */
+#view-list { padding: 1rem; }
+.empty { text-align: center; padding: 3rem 1rem; color: #a09070; line-height: 2.4; font-size: 0.92rem; }
+.card { background: #fff; border-radius: 10px; padding: 1rem 1.2rem; margin-bottom: 0.75rem; border-left: 4px solid #c8a96e; display: flex; align-items: center; justify-content: space-between; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.card:active { opacity: 0.75; }
+.card-info h3 { font-size: 1rem; margin-bottom: 0.2rem; }
+.card-info span { font-size: 0.78rem; color: #a09070; }
+.del-btn { background: none; border: 1px solid #ddd; border-radius: 6px; padding: 0.35rem 0.7rem; font-size: 0.78rem; color: #999; cursor: pointer; font-family: inherit; }
+
+/* 追加 */
+#view-add { padding: 1rem 1rem 3rem; }
+.hint { font-size: 0.82rem; color: #7a5c20; background: #fdf8ee; border: 1px solid #e8d9b8; border-radius: 8px; padding: 0.8rem 1rem; margin-bottom: 1.2rem; line-height: 1.9; }
+.step { display: inline-block; background: #c8a96e; color: #1a1208; border-radius: 50%; width: 20px; height: 20px; text-align: center; line-height: 20px; font-size: 0.75rem; font-weight: bold; margin-right: 0.3rem; }
+.paste-btn { width: 100%; padding: 1rem; border-radius: 10px; border: 2px dashed #c8a96e; background: #fff; font-family: inherit; font-size: 1rem; color: #7a5c20; cursor: pointer; margin-bottom: 1rem; letter-spacing: 0.05em; }
+.paste-btn:active { background: #fdf8ee; }
+.status { font-size: 0.85rem; padding: 0.7rem 1rem; border-radius: 8px; margin-bottom: 1rem; display: none; }
+.status.done  { background: #edfaf2; color: #2a6a3a; border: 1px solid #7dd4a0; display: block; }
+.status.error { background: #fdecea; color: #8b2020; border: 1px solid #f0a0a0; display: block; }
+
+/* 読む */
+#view-read { padding: 1rem 1rem 4rem; }
+.back-btn { color: #c8a96e; font-size: 0.88rem; cursor: pointer; margin-bottom: 1rem; display: inline-block; }
+#read-title { font-size: 1.5rem; letter-spacing: 0.2em; margin-bottom: 0.25rem; }
+#read-date  { font-size: 0.82rem; color: #a09070; margin-bottom: 1.2rem; }
+
+.tts-bar { background: #fff; border-radius: 10px; padding: 0.9rem 1rem; margin-bottom: 1.2rem; display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+.tts-btn { padding: 0.5rem 1.1rem; border-radius: 20px; border: 1px solid #d4c4a8; background: #fff; font-family: inherit; font-size: 0.88rem; color: #2c2416; cursor: pointer; }
+.tts-btn.active { background: #1a1208; color: #f0e6cc; border-color: #1a1208; }
+.speed-sel { border: 1px solid #d4c4a8; border-radius: 6px; padding: 0.4rem 0.5rem; font-family: inherit; font-size: 0.85rem; background: #fff; }
+.tts-label { font-size: 0.78rem; color: #a09070; }
+
+.article { background: #fff; border-radius: 10px; padding: 1.5rem 1.3rem; font-size: 1.08rem; line-height: 2.8; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.article p { margin-bottom: 1em; text-indent: 1em; }
+.article p.no-indent { text-indent: 0; }
+ruby { ruby-align: center; }
+rt { font-size: 0.48em; color: #a09070; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>春秋スクラップ</h1>
+  <small>日経コラム音読帳</small>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="list" onclick="showTab('list')">📚 一覧</div>
+  <div class="tab" data-tab="add"  onclick="showTab('add')">➕ 追加</div>
+</div>
+
+<!-- 一覧 -->
+<div id="view-list" class="view active">
+  <div id="list-inner"></div>
+</div>
+
+<!-- 追加 -->
+<div id="view-add" class="view">
+  <div class="hint">
+    <span class="step">1</span> パソコンのPC用アプリで「ルビを付けてコピー」<br>
+    <span class="step">2</span> iPhoneでこの画面を開く<br>
+    <span class="step">3</span> 下のボタンをタップして貼り付け
+  </div>
+  <button class="paste-btn" onclick="pasteAndAdd()">📋 貼り付けて追加</button>
+  <div class="status" id="add-status"></div>
+</div>
+
+<!-- 読む -->
+<div id="view-read" class="view">
+  <div class="back-btn" onclick="showTab('list')">← 一覧に戻る</div>
+  <div id="read-title"></div>
+  <div id="read-date"></div>
+  <div class="tts-bar">
+    <button class="tts-btn" id="play-btn" onclick="togglePlay()">▶ 読み上げ</button>
+    <button class="tts-btn" onclick="stopTTS()">⏹</button>
+    <span class="tts-label">速度</span>
+    <select class="speed-sel" id="speed-sel" onchange="onSpeedChange()">
+      <option value="0.7">遅い</option>
+      <option value="0.85">やや遅め</option>
+      <option value="1.0" selected>標準</option>
+      <option value="1.2">やや速め</option>
+      <option value="1.5">速い</option>
+    </select>
+  </div>
+  <div class="article" id="read-body"></div>
+</div>
+
+<script>
+const KEY = 'shunjuu_v4';
+function localLoad() { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch { return []; } }
+function localSave(d) { localStorage.setItem(KEY, JSON.stringify(d)); }
+
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  if (name === 'list') renderList();
+  if (name === 'add') document.getElementById('add-status').style.display = 'none';
+}
+
+function renderList() {
+  const data = localLoad();
+  const el = document.getElementById('list-inner');
+  if (!data.length) {
+    el.innerHTML = '<div class="empty">📰<br>まだスクラップがありません<br><br>「追加」タブを開いて<br>パソコンからデータを貼り付けてください</div>';
+    return;
+  }
+  el.innerHTML = data.slice().reverse().map((d, ri) => {
+    const i = data.length - 1 - ri;
+    return `<div class="card" onclick="openEntry(${i})">
+      <div class="card-info">
+        <h3>${esc(d.title)}</h3>
+        <span>${d.date || '日付なし'}</span>
+      </div>
+      <button class="del-btn" onclick="event.stopPropagation();delEntry(${i})">削除</button>
+    </div>`;
+  }).join('');
+}
+
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function delEntry(i) {
+  if (!confirm('削除しますか？')) return;
+  const data = localLoad(); data.splice(i,1); localSave(data); renderList();
+}
+
+async function pasteAndAdd() {
+  const statusEl = document.getElementById('add-status');
+  statusEl.style.display = 'none';
+
+  let text = '';
+  try {
+    text = await navigator.clipboard.readText();
+  } catch(e) {
+    // クリップボードAPIが使えない場合はpromptで入力
+    text = prompt('パソコンでコピーしたデータを貼り付けてください：') || '';
+  }
+
+  if (!text) {
+    statusEl.className = 'status error';
+    statusEl.textContent = '❌ データが見つかりません。パソコンでコピーしてからお試しください。';
+    return;
+  }
+
+  try {
+    const entry = JSON.parse(text);
+    if (!entry.body && !entry.rubyBody) throw new Error('invalid');
+    const data = localLoad();
+    // 同じ日付・タイトルが既にあれば上書き
+    const idx = data.findIndex(d => d.date === entry.date && d.title === entry.title);
+    if (idx >= 0) data[idx] = entry; else data.push(entry);
+    localSave(data);
+    statusEl.className = 'status done';
+    statusEl.textContent = `✅ 「${entry.title}（${entry.date}）」を追加しました！`;
+    setTimeout(() => showTab('list'), 1200);
+  } catch(e) {
+    statusEl.className = 'status error';
+    statusEl.textContent = '❌ データの形式が正しくありません。パソコン用アプリで再度コピーしてください。';
+  }
+}
+
+function openEntry(i) {
+  const d = localLoad()[i];
+  document.getElementById('read-title').textContent = d.title || '無題';
+  document.getElementById('read-date').textContent = d.date || '';
+  document.getElementById('read-body').innerHTML = renderBody(d.rubyBody || d.body || '');
+  stopTTS();
+  showTab('read');
+}
+
+function renderBody(text) {
+  return text.split(/\n\n+/).map(p => {
+    p = p.trim(); if (!p) return '';
+    const cls = p.startsWith('▼') ? 'no-indent' : '';
+    return `<p class="${cls}">${p}</p>`;
+  }).join('');
+}
+
+/* TTS */
+let speaking = false;
+function togglePlay() { speaking ? stopTTS() : startTTS(); }
+function startTTS() {
+  stopTTS();
+  const text = document.getElementById('read-body').innerText;
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang = 'ja-JP';
+  utt.rate = parseFloat(document.getElementById('speed-sel').value);
+  utt.onend = () => setPlaying(false);
+  utt.onerror = () => setPlaying(false);
+  speechSynthesis.speak(utt);
+  setPlaying(true);
+}
+function stopTTS() { speechSynthesis.cancel(); setPlaying(false); }
+function setPlaying(v) {
+  speaking = v;
+  const btn = document.getElementById('play-btn');
+  if (!btn) return;
+  btn.textContent = v ? '⏸ 一時停止' : '▶ 読み上げ';
+  btn.classList.toggle('active', v);
+}
+function onSpeedChange() { if (speaking) startTTS(); }
+
+renderList();
+</script>
+</body>
+</html>
